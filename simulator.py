@@ -5,7 +5,7 @@ import random
 import pandas as pd
 
 # ==================== CẤU HÌNH CỔNG COM ====================
-COM_PORT = 'COM1'
+COM_PORT = 'COM6'
 BAUD_RATE = 115200
 
 # ==================== MENU CHỌN 3 CHẾ ĐỘ ====================
