@@ -4,16 +4,16 @@ import socket
 import random
 import pandas as pd
 
-# ==================== CẤU HÌNH ĐỊA CHỈ PI 5 & SOCKET ====================
-# 1. Điền địa chỉ IP mạng Wi-Fi của Raspberry Pi 5 tại đây (Ví dụ: 192.168.1.50)
-RPI_IP = "192.168.1.50" 
+# ==================== 1. CẤU HÌNH ĐỊA CHỈ PI 5 & SOCKET ====================
+# Điền địa chỉ IP của Raspberry Pi 5
+RPI_IP = "192.168.122.33" 
 
-# 2. Cấu hình Cổng và ID cho Monitor này
+# Cấu hình Cổng và ID cho Monitor này
 # Máy 2: Port 8081 | Máy 3: Port 8082 | Máy 4: Port 8083
 PORT = 8081                     
-MONITOR_ID = "MONITOR_BED_02"   
+MONITOR_ID = "Wifi_BED_02"   
 
-# ==================== MENU CHỌN 3 CHẾ ĐỘ ====================
+# ==================== 2. MENU CHỌN CHẾ ĐỘ ====================
 def show_menu():
     print("\n==================================================")
     print(f"   PATIENT MONITOR WI-FI SIMULATOR - [{MONITOR_ID}]")
@@ -32,7 +32,7 @@ def show_menu():
 
 MODE = show_menu()
 
-# ==================== NẠP DỮ LIỆU TỆP GỐC BIDMC ====================
+# ==================== 3. NẠP DỮ LIỆU TỆP GỐC BIDMC ====================
 print("\n-> Đang tải tập dữ liệu BIDMC gốc...")
 try:
     df_signals = pd.read_csv('bidmc_02_Signals.csv')
@@ -51,7 +51,19 @@ except Exception as e:
     print(f"-> [LỖI] Không tìm thấy file CSV dữ liệu BIDMC: {e}")
     exit()
 
-# ==================== VÒNG LẶP PHÁT DỮ LIỆU QUA WI-FI ====================
+# ==================== 4. VÒNG LẶP PHÁT DỮ LIỆU QUA WI-FI (ĐÃ TỐI ƯU SOCKET) ====================
+def connect_to_pi(ip, port):
+    """Hàm tự động kết nối / kết nối lại tới Pi 5"""
+    while True:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((ip, port))
+            print(f"✅ [{MONITOR_ID}] Đã kết nối thành công tới Pi 5 ({ip}:{port})!")
+            return sock
+        except Exception as e:
+            print(f"⏳ [{MONITOR_ID}] Đang thử kết nối lại tới Pi 5 ({ip}:{port})...")
+            time.sleep(2)
+
 FS = 125
 signal_ptr = 0
 numeric_ptr = 0
@@ -59,6 +71,8 @@ numeric_ptr = 0
 print("\n==================================================")
 print(f"  BẮT ĐẦU PHÁT DỮ LIỆU WI-FI MODE {MODE} SANG PI 5 ({RPI_IP}:{PORT})")
 print("==================================================\n")
+
+client_socket = connect_to_pi(RPI_IP, PORT)
 
 try:
     while True:
@@ -79,22 +93,19 @@ try:
             current_resp = int(resp_list[numeric_ptr]) if numeric_ptr < len(resp_list) else 16
             nibp_str = "120/80"
             numeric_ptr = (numeric_ptr + 1) % len(hr_list)
-
         elif MODE == 2:
             patient_id = f"{MONITOR_ID}_SIM_NORMAL"
             current_hr = random.randint(65, 85)
             current_spo2 = random.randint(96, 99)
             current_resp = random.randint(12, 18)
             nibp_str = f"{random.randint(110, 122)}/{random.randint(70, 80)}"
-
         else:
             patient_id = f"{MONITOR_ID}_SIM_CRITICAL"
-            current_hr = random.choice([135, 150, 42, 48])     # Nhịp tim bất thường
-            current_spo2 = random.choice([82, 86, 89])          # Tụt SpO2 nghiêm trọng
-            current_resp = random.choice([8, 32])               # Suy hô hấp
+            current_hr = random.choice([135, 150, 42, 48])
+            current_spo2 = random.choice([82, 86, 89])
+            current_resp = random.choice([8, 32])
             nibp_str = random.choice(["165/105", "80/50"])
 
-        # Đóng gói JSON chuẩn cấu hình của nhóm em
         monitor_packet = {
             "device_info": {
                 "id": MONITOR_ID, 
@@ -116,22 +127,18 @@ try:
             }
         }
 
-        # ⚡ PHÁT DỮ LIỆU SANG RASPBERRY PI 5 QUA WI-FI SOCKET
+        # Phát dữ liệu qua Socket
         try:
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.settimeout(2)
-            client_socket.connect((RPI_IP, PORT))
-            
             payload = json.dumps(monitor_packet) + "\n"
             client_socket.sendall(payload.encode('utf-8'))
-            client_socket.close()
-
-            print(f"[{time.strftime('%H:%M:%S')}] [MODE {MODE}] [{patient_id}] -> HR: {current_hr} bpm | SpO2: {current_spo2}% | Resp: {current_resp}/phút | BP: {nibp_str}")
-
+            print(f"[{time.strftime('%H:%M:%S')}] [MODE {MODE}] [{patient_id}] -> HR: {current_hr} bpm | SpO2: {current_spo2}% | Resp: {current_resp}/phút")
         except Exception as e:
-            print(f"⚠️ [{MONITOR_ID}] Không thể kết nối tới Pi 5 ({RPI_IP}:{PORT}): {e}")
+            print(f"⚠️ Mất kết nối tới Pi 5, đang thử kết nối lại...")
+            client_socket.close()
+            client_socket = connect_to_pi(RPI_IP, PORT)
 
         time.sleep(1)
 
 except KeyboardInterrupt:
+    client_socket.close()
     print("\n-> Đã dừng chương trình phát Wi-Fi.")

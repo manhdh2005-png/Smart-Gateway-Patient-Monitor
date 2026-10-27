@@ -78,7 +78,7 @@ try:
         # Cấu hình Vitals theo từng Mode
         if MODE == 1:
             # MODE 1: Dữ liệu chuẩn gốc từ BIDMC
-            patient_id = "PATIENT_BIDMC_REAL"
+            patient_id = "RS232_BED_01_REAL"
             current_hr = int(hr_list[numeric_ptr]) if numeric_ptr < len(hr_list) else 75
             current_spo2 = int(spo2_list[numeric_ptr]) if numeric_ptr < len(spo2_list) else 98
             current_resp = int(resp_list[numeric_ptr]) if numeric_ptr < len(resp_list) else 16
@@ -87,7 +87,7 @@ try:
 
         elif MODE == 2:
             # MODE 2: Giả lập bệnh nhân bình thường khác
-            patient_id = "PATIENT_SIM_NORMAL"
+            patient_id = "RS232_BED_01_NORMAL"
             current_hr = random.randint(65, 85)
             current_spo2 = random.randint(96, 99)
             current_resp = random.randint(12, 18)
@@ -95,7 +95,7 @@ try:
 
         else:
             # MODE 3: Giả lập bệnh nhân bất thường / sự cố cấp cứu
-            patient_id = "PATIENT_SIM_CRITICAL"
+            patient_id = "RS232_BED_01_CRITICAL"
             current_hr = random.choice([135, 150, 42, 48])     # Nhịp tim quá nhanh hoặc quá chậm
             current_spo2 = random.choice([82, 86, 89])          # Tụt SpO2 nghiêm trọng
             current_resp = random.choice([8, 32])               # Suy hô hấp
